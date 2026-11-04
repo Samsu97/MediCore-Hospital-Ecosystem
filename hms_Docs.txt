@@ -1,0 +1,827 @@
+Hospital Management System
+
+Features and Functionality:
+
+Patient Profile Management:
+
+The system allows the management of patient profiles, including their personal information, medical history, and current treatment plan.
+
+Doctor Profile Management:
+
+The system allows the management of doctor profiles, including their personal information; qualifications, and specialties
+
+Appointment Scheduling:
+
+The system allows the scheduling and rescheduling of appointmerits, with automated notifications to both patients and doctors.
+
+Billing and Payment Management:
+
+The system allows the management of billing and payments, with automated invoice generation and tracking of payments.
+
+-------------------------------------------------------------
+
+API Calls for the Hospital Management System:
+
+For Patient:
+
+POST /patient: Creates a new patient record
+
+GET /patient: Retrieves a list of all patients
+
+GET /patient/:id: Retrieves a specific patient's details by their ID
+
+PUT/patient/:id: Updates an existing patient's details by their ID
+
+DELETE /patient/:id: Deletes a specific patient's record by their ID
+
+-------------------------------------------------------------
+
+For Doctor:
+
+POST/doctor: Creates a new doctor record
+
+GET/doctor: Retrieves a list of all doctors
+
+GET /doctor/:id: Retrieves a specific doctor's details by their ID
+
+PUT/doctor/:id: Updates an existing doctor's details by their ID
+
+DELETE /doctor/:id: Deletes a specific doctor's record by their ID
+
+-------------------------------------------------------------
+
+For Appointment:
+
+POST /appointment: Creates a new appointment record
+
+GET/appointment: Retrieves a list of all appointments
+
+GET /appointment/:id: Retrieves a specific appointment's details by its ID
+
+PUT/appointment/:id: Updates an existing appointment's details by its ID
+
+DELETE /appointment/:id: Deletes a specific appointment's record by its ID
+
+-------------------------------------------------------------
+
+For Billing:
+
+POST/bill: Creates a new bill record
+
+GET/bill: Retrieves a list of all bills
+
+GET /bill/:id: Retrieves a specific bill's details by its ID
+
+PUT/bill/:id: Updates an existing bill's details by its ID
+
+DELETE /bill/:id: Deletes a specific bill's record by its ID
+
+-------------------------------------------------------------
+
+Lombok
+
+Lombok is a library that helps to reduce boilerplate code in Java classes by automatically generating getters, setters, constructors, and other common methods.
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+My raw code before chatgpt modify:
+
+package com.basic.hms.entity;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "patients")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Patient {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+
+    @NotBlank(message = "Name is required")
+    @Column(nullable = false)
+    private String name;
+
+    @NotNull(message = "Age is mandatory.")
+    @Column(nullable = false)
+    private int age;
+
+    @NotBlank(message = "Please provide Gender.")
+    @Column(nullable = false)
+    private String gender;
+    
+}
+------
+
+package com.basic.hms.repository;
+
+import com.basic.hms.entity.Patient;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface PatientRepository extends JpaRepository<Patient, Long> {
+
+    Patient findByName (String name);
+
+}
+--------
+
+package com.basic.hms.service;
+
+import com.basic.hms.entity.Patient;
+import com.basic.hms.repository.PatientRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class PatientService {
+
+    @Autowired
+    private PatientRepository patientRepository;
+
+
+    public Patient createPatient(Patient patient){
+        return patientRepository.save(patient);
+    }
+
+
+    public List<Patient> getAllPatients(){
+        return patientRepository.findAll();
+    }
+
+
+    public Optional<Patient> getPatientById(Long id){
+        return patientRepository.findById(id);
+    }
+
+//    Update method easy 1
+//    public Patient updatePatient(Long id, Patient patient){
+//        return  patientRepository.save(patient);
+//    }
+
+//  Update method easy 2
+    public  Patient updatePatient(Long id, Patient updatePatient){
+        Optional<Patient> existingPatient = patientRepository.findById(id);
+
+        if (existingPatient.isPresent()){
+            Patient p = existingPatient.get();
+            p.setName(updatePatient.getName());
+            p.setAge(updatePatient.getAge());
+            p.setGender(updatePatient.getGender());
+
+            patientRepository.save(p);
+
+            return updatePatient;
+        } else {
+            System.out.println("Patient id is not present.");
+            return null;
+        }
+
+    }
+
+
+	//Delete method easy 1
+    public void deletePatient(Long id){
+        patientRepository.deleteById(id);
+    }
+	//Delete method easy 2
+	public void deletePatient(Long id){
+        if(!patientRepository.existsById(id)){
+            throw new RuntimeException("Patient not found with id: " + id);
+        }
+        patientRepository.deleteById(id);
+    }
+
+
+
+}
+------
+
+package com.basic.hms.controller;
+
+import com.basic.hms.entity.Patient;
+import com.basic.hms.service.PatientService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+
+@RestController
+@RequestMapping("/api/v1/patients")
+public class PatientController {
+
+    @Autowired
+    private PatientService patientService;
+
+    //Add Patient
+    @PostMapping
+    public ResponseEntity<Patient> createPatient(@RequestBody Patient patient){
+        Patient savePatient = patientService.createPatient(patient);
+        return new ResponseEntity<>(savePatient, HttpStatus.CREATED);
+    }
+
+    //Get All
+    @GetMapping
+    public ResponseEntity<List<Patient>> getAllPatients(){
+        List<Patient> getAllPatient = patientService.getAllPatients();
+        return  new ResponseEntity<>(getAllPatient, HttpStatus.OK);
+    }
+
+    //Get By Id
+    @GetMapping("/{id}")
+    public ResponseEntity<Patient> getPatientById(@PathVariable Long id){
+       Patient getPatientById = patientService.getPatientById(id).orElse(null);
+       return new ResponseEntity<>(getPatientById, HttpStatus.OK);
+    }
+
+    //Update by id
+    @PutMapping("/{id}")
+    public ResponseEntity<Patient> updatePatient(@PathVariable Long id, @RequestBody Patient patient){
+        Patient patient1 = patientService.updatePatient(id, patient);
+        return  new ResponseEntity<>(patient1, HttpStatus.OK);
+    }
+
+    //Delete by Id
+    @DeleteMapping("/{id}")
+    public String deletePatient (@PathVariable Long id){
+        patientService.deletePatient(id);
+        return "Patient deleted successfully with id: " + id;
+    }
+
+
+
+
+}
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Actual proper correct Code:
+
+Patient ↔ Appointment: One-to-Many (mappedBy = "patient")
+
+Doctor ↔ Appointment: One-to-Many (mappedBy = "doctor")
+
+Patient ↔ Bill: One-to-Many (mappedBy = "patient")
+
+Appointment ↔ Patient & Doctor: Many-to-One with @JoinColumn
+
+
+---------------------------------------------
+Entity Layer:
+
+@Entity
+@Table(name = "patients")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Patient {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank(message = "Name is required")
+    @Column(nullable = false)
+    private String name;
+
+    @NotNull(message = "Age is mandatory.")
+    @Column(nullable = false)
+    private Integer age;
+
+    @NotBlank(message = "Email is Required.")
+    @Email(message = "Invalid email.")
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    @NotBlank(message = "Please provide Gender.")
+    @Column(nullable = false)
+    private String gender;
+
+    @OneToMany(mappedBy = "patient")
+    @JsonIgnore
+    private List<Bill> bills;
+
+    @OneToMany(mappedBy = "patient")
+    @JsonIgnore
+    private List<Appointment> appointments;
+
+}
+
+@Entity
+@Table(name = "doctors")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Doctor {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank(message = "Name is required")
+    @Column(nullable = false)
+    private String name;
+
+    @NotBlank(message = "Email is Required.")
+    @Email(message = "Invalid email.")
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    @NotBlank
+    @Column(nullable = false)
+    private String speciality;
+
+    @NotNull
+    @Column(nullable = false)
+    private int yearsOfExp;
+
+    @OneToMany(mappedBy = "doctor")
+    @JsonIgnore
+    private List<Appointment> appointments;
+
+}
+
+@Entity
+@Table
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Bill {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotNull(message = "Please mention amount.")
+    @Column(nullable = false)
+    private double amount;
+
+    @NotBlank(message = "please mention payment staus.")
+    private String paymentStatus;
+
+    @ManyToOne
+    @JoinColumn(name = "patient_id", nullable = false)
+    private Patient patient;
+
+
+}
+
+
+@Entity
+@Table(name = "appointments")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Appointment {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+
+    @ManyToOne
+    @JoinColumn(name = "patient_id", nullable = false)
+    private Patient patient;
+
+    @ManyToOne
+    @JoinColumn(name = "doctor_id", nullable = false)
+    private Doctor doctor;
+
+    @NotBlank(message = "Please mention date of appointment.")
+    @Column(nullable = false)
+    private String appointDate;
+    
+}
+
+--------------
+Repository Layer:
+
+Repo layer:
+
+@Repository
+public interface PatientRepository extends JpaRepository<Patient, Long> {
+
+   Optional <Patient> findByName (String name);
+
+   Optional <Patient> findByEmail(String email);
+
+}
+
+@Repository
+public interface DoctorRepository extends JpaRepository<Doctor, Long> {
+
+    Optional<Doctor> findByName (String name);
+   Optional< Doctor> findByEmail(String email);
+
+}
+
+@Repository
+public interface BillRepository extends JpaRepository<Bill, Long> {
+
+
+}
+
+@Repository
+public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
+}
+ 
+
+---------------------------------------------
+
+Service layer:
+
+@Service
+public class PatientService {
+
+    private final PatientRepository patientRepository;
+
+    // Constructor Injection
+    public PatientService(PatientRepository patientRepository) {
+        this.patientRepository = patientRepository;
+    }
+
+    //Create
+    public Patient createPatient(Patient patient) {
+        return patientRepository.save(patient);
+    }
+
+    //Read - Get all
+    public List<Patient> getAllPatients() {
+        return patientRepository.findAll();
+    }
+
+    //Read - Get by id
+    public Patient getPatientById(Long id) {
+        return patientRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Patient not found with id: " + id));
+    }
+
+    //Update by id
+    public Patient updatePatient(Long id, Patient patient) {
+
+        Patient existingPatient = getPatientById(id);
+
+        existingPatient.setName(patient.getName());
+        existingPatient.setAge(patient.getAge());
+        existingPatient.setEmail((patient.getEmail()));
+        existingPatient.setGender(patient.getGender());
+
+        return patientRepository.save(existingPatient);
+    }
+
+    //Delete by id
+    public void deletePatient(Long id) {
+        Patient existingPatient = getPatientById(id);
+        patientRepository.delete(existingPatient);
+    }
+}
+
+
+
+
+@Service
+public class DoctorService {
+
+    //DI
+    private final DoctorRepository doctorRepository;
+
+    //Constructor Injection
+    public DoctorService(DoctorRepository doctorRepository) {
+        this.doctorRepository = doctorRepository;
+    }
+
+    //Create
+    public Doctor createDoctor(Doctor doctor){
+        return doctorRepository.save(doctor);
+    }
+
+    //Read - Get all
+    public List<Doctor> getAllDoctors(){
+        return doctorRepository.findAll();
+    }
+
+    //Read - Get by id
+    public Doctor getDoctorById(Long id){
+        return doctorRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Doctor not found with id: " + id));
+    }
+
+    //Update by id
+    public Doctor updateDoctor(Long id, Doctor doctor){
+        Doctor existingDoctor = getDoctorById(id);
+
+        existingDoctor.setName(doctor.getName());
+        existingDoctor.setEmail(doctor.getEmail());
+        existingDoctor.setSpeciality(doctor.getSpeciality());
+        existingDoctor.setYearsOfExp(doctor.getYearsOfExp());
+
+        return doctorRepository.save(existingDoctor);
+    }
+
+    //Delete by id
+    public void deleteDoctor(Long id){
+        Doctor existingDoctor = getDoctorById(id);
+        doctorRepository.delete(existingDoctor);
+    }
+
+}
+
+
+@Service
+public class BillService {
+
+    private final BillRepository billRepository;
+
+    public BillService(BillRepository billRepository) {
+        this.billRepository = billRepository;
+    }
+
+    //Add or Create
+    public Bill createBill (Bill bill){
+        return billRepository.save(bill);
+    }
+
+    //Get all
+    public List<Bill> getAllBills(){
+        return billRepository.findAll();
+    }
+
+    //Get by id
+    public Bill getBillById(Long id){
+        return billRepository.findById(id).orElseThrow(()-> new ResourceNotFoundException("Bill not found with id: " + id));
+    }
+
+
+    //Update
+    public Bill updateBill(Long id, Bill bill){
+        Bill existingBill = getBillById(id);
+
+        existingBill.setAmount(bill.getAmount());
+        existingBill.setPatient(bill.getPatient());
+        existingBill.setPaymentStatus(bill.getPaymentStatus());
+
+        return billRepository.save(existingBill);
+    }
+
+    //Delete
+    public void deleteBill(Long id){
+        Bill existingBill = getBillById(id);
+        billRepository.delete(existingBill);
+    }
+
+
+
+
+}
+
+
+@Service
+public class AppointmentService {
+
+    private final AppointmentRepository appointmentRepository;
+
+    public AppointmentService(AppointmentRepository appointmentRepository) {
+        this.appointmentRepository = appointmentRepository;
+    }
+
+    //Create
+    public Appointment createAppointment(Appointment appointment){
+        return  appointmentRepository.save(appointment);
+    }
+
+    //Read All
+    public List<Appointment> getAllAppointment(){
+        return appointmentRepository.findAll();
+    }
+
+    //Read by id
+    public Appointment getAppointmentById(Long id){
+        return appointmentRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Appointment not found with id: " + id));
+    }
+
+    //Update
+    public Appointment updateAppointment(Long id, Appointment appointment){
+        Appointment existingAppointment = getAppointmentById(id);
+
+        existingAppointment.setAppointDate(appointment.getAppointDate());
+        existingAppointment.setDoctor(appointment.getDoctor());
+        existingAppointment.setPatient(appointment.getPatient());
+
+        return appointmentRepository.save(existingAppointment);
+
+    }
+
+
+    //Delete
+    public void deleteAppointment (Long id){
+        Appointment existingAppointment = getAppointmentById(id);
+        appointmentRepository.delete(existingAppointment);
+    }
+
+}
+ 
+----------------------------------------------
+
+Controller layer
+
+@RestController
+@RequestMapping("/api/v1/patients")
+public class PatientController {
+
+    private final PatientService patientService;
+
+    // Constructor Injection
+    public PatientController(PatientService patientService) {
+        this.patientService = patientService;
+    }
+
+    // Create
+    @PostMapping
+    public ResponseEntity<Patient> createPatient(@Valid @RequestBody Patient patient) {
+        Patient savedPatient = patientService.createPatient(patient); // Can use directly.
+        return new ResponseEntity<>(savedPatient, HttpStatus.CREATED);
+    }
+
+    // Get All
+    @GetMapping
+    public ResponseEntity<List<Patient>> getAllPatients() {
+        return new ResponseEntity<>(patientService.getAllPatients(), HttpStatus.OK);
+    }
+
+    // Get By id
+    @GetMapping("/{id}")
+    public ResponseEntity<Patient> getPatientById(@PathVariable Long id) {
+        return new ResponseEntity<>(patientService.getPatientById(id), HttpStatus.OK);
+    }
+
+    // Update
+    @PutMapping("/{id}")
+    public ResponseEntity<Patient> updatePatient(@PathVariable Long id, @Valid @RequestBody Patient patient) {
+        return new ResponseEntity<>(patientService.updatePatient(id, patient), HttpStatus.OK);
+    }
+
+    // Delete by id
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletePatient(@PathVariable Long id) {
+        patientService.deletePatient(id);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+
+}
+
+
+@RestController
+@RequestMapping("/api/v1/doctors")
+public class DoctorController {
+
+    private final DoctorService doctorService;
+
+    // Constructor Injection
+    public DoctorController(DoctorService doctorService) {
+        this.doctorService = doctorService;
+    }
+
+    // Create
+    @PostMapping
+    public ResponseEntity<Doctor> createDoctor (@Valid @RequestBody Doctor doctor){
+        return new ResponseEntity<>(doctorService.createDoctor(doctor), HttpStatus.CREATED);
+    }
+
+    //Read - Get all
+    @GetMapping
+    public ResponseEntity<List<Doctor>> getAllDoctor(){
+        return new ResponseEntity<>(doctorService.getAllDoctors(), HttpStatus.OK);
+    }
+
+
+    //Read - Get by id
+    @GetMapping("/{id}")
+    public ResponseEntity<Doctor> getDoctorById(@PathVariable Long id){
+        return new ResponseEntity<>(doctorService.getDoctorById(id), HttpStatus.OK);
+    }
+
+
+    //Update
+    @PutMapping("/{id}")
+    public ResponseEntity<Doctor> updateDoctor(@PathVariable Long id, @Valid @RequestBody Doctor doctor){
+        return new ResponseEntity<>(doctorService.updateDoctor(id, doctor), HttpStatus.OK);
+    }
+
+
+    //Delete by id
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteDoctor(@PathVariable Long id){
+        doctorService.deleteDoctor(id);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+
+}
+
+@RestController
+@RequestMapping("/api/v1/bills")
+public class BillController {
+
+    private final BillService billService;
+
+    public BillController(BillService billService) {
+        this.billService = billService;
+    }
+
+    //Create
+    @PostMapping
+    public ResponseEntity<Bill> createBill(@Valid @RequestBody Bill bill){
+        return new ResponseEntity<>(billService.createBill(bill), HttpStatus.CREATED);
+    }
+
+    //Get all
+    @GetMapping
+    public ResponseEntity<List<Bill>> getAllBills(){
+        return new ResponseEntity<>(billService.getAllBills(), HttpStatus.OK);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Bill> getBillById(@PathVariable Long id){
+        return new ResponseEntity<>(billService.getBillById(id), HttpStatus.OK);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Bill> updateBill(@PathVariable Long id, @Valid @RequestBody Bill bill){
+        return new ResponseEntity<>(billService.updateBill(id, bill), HttpStatus.OK);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteBill(@PathVariable Long id){
+        billService.deleteBill(id);
+
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+
+}
+
+
+
+@RestController
+@RequestMapping("/api/v1/appointments")
+public class AppointmentController {
+
+    private final AppointmentService appointmentService;
+
+    public AppointmentController(AppointmentService appointmentService) {
+        this.appointmentService = appointmentService;
+    }
+
+    //Create
+    @PostMapping
+    public ResponseEntity<Appointment> createAppointment(@Valid @RequestBody Appointment appointment){
+        return  new ResponseEntity<>(appointmentService.createAppointment(appointment), HttpStatus.CREATED);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Appointment>> getAll(){
+        return new ResponseEntity<>(appointmentService.getAllAppointment(), HttpStatus.OK);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Appointment> getAppointmentById(@PathVariable Long id){
+        return new ResponseEntity<>(appointmentService.getAppointmentById(id), HttpStatus.OK);
+    }
+
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Appointment> updateAppointment(@PathVariable Long id, @Valid @RequestBody Appointment appointment){
+        return new ResponseEntity<>(appointmentService.updateAppointment(id, appointment), HttpStatus.OK);
+    }
+
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteAppointment (@PathVariable Long id){
+        appointmentService.deleteAppointment(id);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+
+
+
+}
